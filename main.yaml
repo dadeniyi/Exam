@@ -1,0 +1,136 @@
+---
+- name: setting up laravel
+  hosts: all
+  tasks:
+    - name: install packages1
+      apt:
+        name: php7.4-cli
+        state: latest
+        update_cache: yes
+      become: yes
+    - name: install packages2
+      apt:
+        name: php-xml
+        state: latest
+        update_cache: yes
+      become: yes
+    - name: install packages3
+      apt:
+        name: php-pgsql
+        state: latest
+        update_cache: yes
+      become: yes
+    - name: install packages4
+      apt:
+        name: libapache2-mod-php
+        state: latest
+        update_cache: yes
+      become: yes  
+    - name: install packages5
+      apt:
+        name: apache2
+        state: latest
+        update_cache: yes
+      become: yes  
+    - name: install packages6
+      apt:
+        name: git
+        state: latest
+        update_cache: yes
+      become: yes
+    - name: install packages7
+      apt:
+        name: zip
+        state: latest
+        update_cache: yes
+      become: yes
+    - name: install packages8
+      apt:
+        name: unzip
+        state: latest
+        update_cache: yes
+      become: yes
+    - name: install packages9
+      apt:   
+         name: curl
+         state: latest
+         update_cache: yes
+      become: yes
+    - name: install packages10
+      apt:
+         name: php-curl
+         state: latest
+         update_cache: yes
+      become: yes
+    - name: download composer installer
+      get_url:
+       url: https://getcomposer.org/installer
+       dest: /tmp/composer
+    - name: install composer
+      shell: php /tmp/composer --install-dir=/usr/local/bin
+      become: yes
+    - name: rename composer executable
+      shell: mv /usr/local/bin/composer.phar /usr/local/bin/composer
+      become: yes
+    - name: set permissions for composer file
+      file:
+       path: /usr/local/bin/composer
+       mode: a+x
+       state: file
+    - name: clone laravel codebase
+      git:
+       repo: https://github.com/laravel/laravel.git
+       dest: /git config --global --add safe.directory /var/www/myapp
+      become: yes
+    - name: take ownership of myapp folder
+      file:
+       path: /var/www/myapp
+       owner: "ansible"
+      become: yes  
+    - name: set permissions for Laravel storage folder
+      file:
+       path: /var/www/myapp/storage
+       state: directory
+       recurse: yes
+       mode: '0755'
+      become: yes
+    - name: install laravel dependencies
+      composer:
+       command: update
+       working_dir: /var/www/myapp
+      become: yes
+    - name: copy env file
+      copy:
+       src: /git config --global --add safe.directory /var/www/myapp/.env.example
+       remote_src: yes
+       dest: /var/www/myapp/.env
+       owner: ansible
+       mode: '0644'
+      become: yes
+    - name: copy apache config
+      copy:
+       src: /home/ansible/myapp.conf
+       remote_src: yes
+       dest: /etc/apache2/sites-available/myapp.conf
+       owner: ansible
+       group: ansible
+       mode: '0644'
+      become: yes
+    - name: set server name
+      replace:
+       path: /etc/apache2/sites-available/myapp.conf
+       regexp: $SERVER_NAME
+       replace: 'ansible'
+      become: yes
+    - name: enable the new config
+      shell: |
+       a2ensite myapp.conf
+       a2dissite 000-default.conf
+       a2enmod rewrite
+       service apache2 restart
+      become: yes
+    - name: setup laravel
+      shell: |
+       cd /var/www/myapp
+       php artisan key:generate
+      become: yes
